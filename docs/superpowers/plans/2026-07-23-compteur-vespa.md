@@ -720,11 +720,13 @@ git commit -m "feat: self-calibrating fuel model (tank, factors, plein/reserve)"
 
 The provided `Compteur-SVG.svg` (viewBox `0 0 1218 562.5`) is used as the base layer. Dial values are drawn as HTML overlays *on top* of the white circles, which covers the SVG's baked-in sample text. The `#Jauge` path is animated by `gauge.js`.
 
-- [ ] **Step 1: Copy the asset**
+- [ ] **Step 1: Derive the cleaned production asset**
+
+The source `Compteur-SVG.svg` bakes SAMPLE values (text + band/icon/weather images) into the four `Cadran*` groups. The live HTML overlays are transparent, so that baked content would show through behind them. Run `scripts/clean-svg.py` (see repo) which keeps each dial's white `<ellipse>` and removes every `<text>`/`<image>` inside the `Cadran*` groups, writing `public/compteur.svg`:
 
 ```bash
 mkdir -p public
-cp Compteur-SVG.svg public/compteur.svg
+python3 scripts/clean-svg.py   # Compteur-SVG.svg -> public/compteur.svg (empty circles)
 ```
 
 - [ ] **Step 2: Load the SVG inline at startup (replace `src/app.js` scaffold)**
@@ -1073,8 +1075,16 @@ loadSvg().then(({ stage, svg }) => {
       persist(); render()
     },
     onPassenger: (on) => { fuel.setPassenger(on); persist() },
-    onSetTotalKm: (v) => { trip.snapshot().totalKm; store.save({ ...fuel.snapshot(), totalKm: v, dailyKm: trip.snapshot().dailyKm }); location.reload() },
-    onSetCalib: (v) => { const s = fuel.snapshot(); store.save({ ...s, calibratedLPer100: v, totalKm: trip.snapshot().totalKm, dailyKm: trip.snapshot().dailyKm }); location.reload() },
+    onSetTotalKm: (v) => {
+      const f = fuel.snapshot()
+      store.save({ ...f, totalKm: v, dailyKm: trip.snapshot().dailyKm })
+      location.reload()
+    },
+    onSetCalib: (v) => {
+      const f = fuel.snapshot()
+      store.save({ ...f, calibratedLPer100: v, totalKm: trip.snapshot().totalKm, dailyKm: trip.snapshot().dailyKm })
+      location.reload()
+    },
   })
 
   function render() {
@@ -1107,6 +1117,7 @@ loadSvg().then(({ stage, svg }) => {
   })
 
   render()
+  setInterval(render, 1000) // keep the wall clock + elapsed display live even between GPS fixes
   requestWakeLock()
 })
 

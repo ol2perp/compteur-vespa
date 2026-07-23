@@ -5,6 +5,7 @@ import { createFuel } from './fuel.js'
 import { createGauge } from './gauge.js'
 import { createDials } from './dials.js'
 import { createControls } from './controls.js'
+import { parseSettingsNumber } from './settings.js'
 
 const store = createStore()
 const saved = store.load()
@@ -45,13 +46,17 @@ loadSvg().then(({ stage, svg }) => {
       alert(r.accepted ? `Calibré : ${r.lPer100.toFixed(1)} L/100` : 'Réserve enregistrée (cycle non calibré)')
       persist(); render()
     },
-    onPassenger: (on) => { fuel.setPassenger(on); persist() },
-    onSetTotalKm: (v) => {
+    onPassenger: (on) => { fuel.setPassenger(on); persist(); render() },
+    onSetTotalKm: (raw) => {
+      const v = parseSettingsNumber(raw, { min: 0 })
+      if (v == null) return
       const f = fuel.snapshot()
       store.save({ ...f, totalKm: v, dailyKm: trip.snapshot().dailyKm })
       location.reload()
     },
-    onSetCalib: (v) => {
+    onSetCalib: (raw) => {
+      const v = parseSettingsNumber(raw, { min: 0.1 })
+      if (v == null) return
       const f = fuel.snapshot()
       store.save({ ...f, calibratedLPer100: v, totalKm: trip.snapshot().totalKm, dailyKm: trip.snapshot().dailyKm })
       location.reload()
@@ -93,12 +98,14 @@ loadSvg().then(({ stage, svg }) => {
 })
 
 async function requestWakeLock() {
-  try {
-    if ('wakeLock' in navigator) {
-      let lock = await navigator.wakeLock.request('screen')
-      document.addEventListener('visibilitychange', async () => {
-        if (document.visibilityState === 'visible') lock = await navigator.wakeLock.request('screen')
-      })
-    }
-  } catch { /* wake lock unavailable — screen may sleep */ }
+  if (!('wakeLock' in navigator)) return
+  let lock = null
+  const acquire = async () => {
+    try { lock = await navigator.wakeLock.request('screen') }
+    catch { /* unavailable or document hidden — will retry on next visibility */ }
+  }
+  await acquire()
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') acquire()
+  })
 }

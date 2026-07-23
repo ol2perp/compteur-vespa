@@ -38,6 +38,6 @@ export function createControls(stage, handlers) {
   q('plein').addEventListener('click', () => handlers.onPlein())
   q('reserve').addEventListener('click', () => handlers.onReserve())
   q('passenger').addEventListener('change', (e) => handlers.onPassenger(e.target.checked))
-  q('totalKm').addEventListener('change', (e) => handlers.onSetTotalKm(Number(e.target.value)))
-  q('calib').addEventListener('change', (e) => handlers.onSetCalib(Number(e.target.value)))
+  q('totalKm').addEventListener('change', (e) => handlers.onSetTotalKm(e.target.value))
+  q('calib').addEventListener('change', (e) => handlers.onSetCalib(e.target.value))
 }
