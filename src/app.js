@@ -109,3 +109,7 @@ async function requestWakeLock() {
     if (document.visibilityState === 'visible') acquire()
   })
 }
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}))
+}
