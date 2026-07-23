@@ -377,9 +377,11 @@ export function startGeo(onUpdate, opts = {}) {
         t: pos.timestamp,
       }
       const r = processFix(prev, fix, opts)
-      if (!r.rejected) prev = fix
-      smoothed = ema(smoothed, r.speedKmh, 0.4)
-      onUpdate({ ...r, speedKmh: r.rejected ? (smoothed ?? 0) : smoothed })
+      if (!r.rejected) {
+        prev = fix
+        smoothed = ema(smoothed, r.speedKmh, 0.4) // only smooth accepted fixes
+      }
+      onUpdate({ ...r, speedKmh: smoothed ?? 0 }) // hold last good speed on rejection
     },
     (err) => onUpdate({ error: err.code, speedKmh: smoothed ?? 0, deltaKm: 0, moving: false }),
     { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 }
@@ -617,7 +619,7 @@ export const TANK_L = 7.7
 export const RESERVE_L = 1.4
 export const USABLE_L = TANK_L - RESERVE_L // 6.3
 export const MIN_CYCLE_KM = 30
-export const VALID_LP100 = [3, 12]
+export const VALID_LP100 = Object.freeze([3, 12])
 
 // U-shaped efficiency curve; 1.0 in the 60-80 km/h optimal band.
 export function speedFactor(kmh) {
@@ -650,8 +652,10 @@ export function createFuel(init = {}) {
 
   function recalibrate() {
     if (cycles.length === 0) return
-    const mean = cycles.reduce((a, c) => a + c.lPer100, 0) / cycles.length
-    calibratedLPer100 = mean
+    // Distance-weighted: a long, high-confidence cycle should outweigh a short, noisy one.
+    const totalDist = cycles.reduce((a, c) => a + c.distanceKm, 0)
+    if (totalDist <= 0) return
+    calibratedLPer100 = cycles.reduce((a, c) => a + c.lPer100 * c.distanceKm, 0) / totalDist
   }
 
   return {
@@ -716,11 +720,13 @@ git commit -m "feat: self-calibrating fuel model (tank, factors, plein/reserve)"
 
 The provided `Compteur-SVG.svg` (viewBox `0 0 1218 562.5`) is used as the base layer. Dial values are drawn as HTML overlays *on top* of the white circles, which covers the SVG's baked-in sample text. The `#Jauge` path is animated by `gauge.js`.
 
-- [ ] **Step 1: Copy the asset**
+- [ ] **Step 1: Derive the cleaned production asset**
+
+The source `Compteur-SVG.svg` bakes SAMPLE values (text + band/icon/weather images) into the four `Cadran*` groups. The live HTML overlays are transparent, so that baked content would show through behind them. Run `scripts/clean-svg.py` (see repo) which keeps each dial's white `<ellipse>` and removes every `<text>`/`<image>` inside the `Cadran*` groups, writing `public/compteur.svg`:
 
 ```bash
 mkdir -p public
-cp Compteur-SVG.svg public/compteur.svg
+python3 scripts/clean-svg.py   # Compteur-SVG.svg -> public/compteur.svg (empty circles)
 ```
 
 - [ ] **Step 2: Load the SVG inline at startup (replace `src/app.js` scaffold)**
@@ -1063,13 +1069,22 @@ loadSvg().then(({ stage, svg }) => {
     getState: () => ({ ...fuel.snapshot() }),
     onPlein: () => { fuel.plein(trip.snapshot().totalKm); persist(); render() },
     onReserve: () => {
+      if (!confirm('Confirmer le passage en réserve ? (le niveau sera recalé à 1,4 L)')) return
       const r = fuel.reserve(trip.snapshot().totalKm)
       alert(r.accepted ? `Calibré : ${r.lPer100.toFixed(1)} L/100` : 'Réserve enregistrée (cycle non calibré)')
       persist(); render()
     },
     onPassenger: (on) => { fuel.setPassenger(on); persist() },
-    onSetTotalKm: (v) => { trip.snapshot().totalKm; store.save({ ...fuel.snapshot(), totalKm: v, dailyKm: trip.snapshot().dailyKm }); location.reload() },
-    onSetCalib: (v) => { const s = fuel.snapshot(); store.save({ ...s, calibratedLPer100: v, totalKm: trip.snapshot().totalKm, dailyKm: trip.snapshot().dailyKm }); location.reload() },
+    onSetTotalKm: (v) => {
+      const f = fuel.snapshot()
+      store.save({ ...f, totalKm: v, dailyKm: trip.snapshot().dailyKm })
+      location.reload()
+    },
+    onSetCalib: (v) => {
+      const f = fuel.snapshot()
+      store.save({ ...f, calibratedLPer100: v, totalKm: trip.snapshot().totalKm, dailyKm: trip.snapshot().dailyKm })
+      location.reload()
+    },
   })
 
   function render() {
@@ -1102,6 +1117,7 @@ loadSvg().then(({ stage, svg }) => {
   })
 
   render()
+  setInterval(render, 1000) // keep the wall clock + elapsed display live even between GPS fixes
   requestWakeLock()
 })
 
@@ -1272,3 +1288,17 @@ Open the Pages URL in Safari → Share → "Sur l'écran d'accueil". Launch from
 - **Spec §8 robustness:** accuracy filter / stop threshold / jump rejection (T3), persistence (T2/T9), wake lock (T9). GPS-loss "GPS ?" display is a small enhancement — add to `dials.render` if `state.gpsError` once field wiring exists (noted, low priority).
 - **Type consistency:** `snapshot()` shapes, `createFuel`/`createTrip` init keys, and `store` DEFAULTS keys align across tasks.
 - **Known V1 simplification:** the SVG's two-tone scale numbers (black 0-60 / white 80-120) are static; only the `#Jauge` sweep is dynamic. Acceptable for V1; refine later if desired.
+
+## Deferred robustness items (post-V1, from code review)
+
+- `geo.js` jump check uses derived km/h with no minimum-`dt` floor: rapid/duplicate `watchPosition` callbacks over a few meters can compute an inflated derived speed and falsely reject a normal fix. Add a min-dt floor or accuracy-aware slack.
+- `geo.js` `startGeo` error handler reports `moving:false, deltaKm:0` on any geolocation error (incl. transient timeouts), which will flash a "stopped" state. Consider debouncing transient errors before surfacing them to the gauge.
+- `app.js` displayed instant consumption uses `fuel.instant(speed, 0)` (ignores acceleration) while actual tank drain uses `fuel.instant(speed, accelKmhs)`. Intentional for V1 (steady-state readout), but during hard acceleration `kmToEmpty` drops faster than the shown L/100. Revisit if the mismatch is confusing on the road.
+- `app.js` feeds `u.moving` from geo directly: on sustained low-accuracy stretches (tunnel/urban canyon) fixes are rejected → `moving:false` → fuel deducted at the idle rate while the gauge holds the last speed, making `kmToEmpty` slightly optimistic after such stretches. Acceptable for V1.
+
+## Post-implementation adjustments (applied during execution)
+
+- **T6:** production SVG is now derived by `scripts/clean-svg.py` (strips baked-in sample text/images from the `Cadran*` groups) instead of a raw copy — the HTML overlays are transparent and the baked content showed through. Verified via headless screenshot.
+- **T9:** added `src/settings.js` (`parseSettingsNumber`, unit-tested) to validate the km-total/calibration inputs — raw `Number('')` was `0` and silently zeroed the odometer/calibration on an accidental blur. `requestWakeLock` now registers the `visibilitychange` re-acquire listener unconditionally (so a hidden-at-launch first failure doesn't permanently disable it). `onPassenger` now re-renders immediately.
+- **Session persistence (post-final-review):** `sessionDistanceKm`/`movingSec`/`stoppedSec` are now persisted (added to store DEFAULTS, seeded into `createTrip`, saved in `persist()` and the settings handlers) so the elapsed-time + average-speed survive reloads (incl. settings-triggered `location.reload()`). Added `trip.resetSession()` and a "🔄 Nouveau trajet" button in ⚙.
+- **T10 (post-final-review):** replaced the hand-rolled `public/sw.js` + `public/manifest.webmanifest` with **`vite-plugin-pwa`** (Workbox, `registerType: 'autoUpdate'`). The prior SW never precached Vite's content-hashed JS bundle and used a static cache name, so offline reload failed and future deploys would brick installed clients. Workbox now precaches all built assets (hashed bundle + `compteur.svg`) with a revisioned cache and auto-updates. Manifest is defined in `vite.config.js`; registration is auto-injected.
