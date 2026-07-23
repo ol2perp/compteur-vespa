@@ -619,7 +619,7 @@ export const TANK_L = 7.7
 export const RESERVE_L = 1.4
 export const USABLE_L = TANK_L - RESERVE_L // 6.3
 export const MIN_CYCLE_KM = 30
-export const VALID_LP100 = [3, 12]
+export const VALID_LP100 = Object.freeze([3, 12])
 
 // U-shaped efficiency curve; 1.0 in the 60-80 km/h optimal band.
 export function speedFactor(kmh) {
@@ -652,8 +652,10 @@ export function createFuel(init = {}) {
 
   function recalibrate() {
     if (cycles.length === 0) return
-    const mean = cycles.reduce((a, c) => a + c.lPer100, 0) / cycles.length
-    calibratedLPer100 = mean
+    // Distance-weighted: a long, high-confidence cycle should outweigh a short, noisy one.
+    const totalDist = cycles.reduce((a, c) => a + c.distanceKm, 0)
+    if (totalDist <= 0) return
+    calibratedLPer100 = cycles.reduce((a, c) => a + c.lPer100 * c.distanceKm, 0) / totalDist
   }
 
   return {
@@ -1065,6 +1067,7 @@ loadSvg().then(({ stage, svg }) => {
     getState: () => ({ ...fuel.snapshot() }),
     onPlein: () => { fuel.plein(trip.snapshot().totalKm); persist(); render() },
     onReserve: () => {
+      if (!confirm('Confirmer le passage en réserve ? (le niveau sera recalé à 1,4 L)')) return
       const r = fuel.reserve(trip.snapshot().totalKm)
       alert(r.accepted ? `Calibré : ${r.lPer100.toFixed(1)} L/100` : 'Réserve enregistrée (cycle non calibré)')
       persist(); render()

@@ -82,4 +82,12 @@ describe('calibration (plein -> reserve)', () => {
     expect(r.accepted).toBe(false)
     expect(f.snapshot().calibratedLPer100).toBe(6) // unchanged
   })
+
+  it('weights calibration by cycle distance (long cycles dominate)', () => {
+    const f = createFuel({ calibratedLPer100: 6 })
+    f.plein(0); f.reserve(180) // 180 km -> 3.5 L/100
+    f.plein(0); f.reserve(63)  // 63 km  -> 10 L/100
+    // distance-weighted = (3.5*180 + 10*63)/(180+63) = 1260/243 ≈ 5.185
+    expect(f.snapshot().calibratedLPer100).toBeCloseTo(5.185, 2)
+  })
 })
