@@ -54,9 +54,11 @@ export function startGeo(onUpdate, opts = {}) {
         t: pos.timestamp,
       }
       const r = processFix(prev, fix, opts)
-      if (!r.rejected) prev = fix
-      smoothed = ema(smoothed, r.speedKmh, 0.4)
-      onUpdate({ ...r, speedKmh: r.rejected ? (smoothed ?? 0) : smoothed })
+      if (!r.rejected) {
+        prev = fix
+        smoothed = ema(smoothed, r.speedKmh, 0.4) // only smooth accepted fixes
+      }
+      onUpdate({ ...r, speedKmh: smoothed ?? 0 }) // hold last good speed on rejection
     },
     (err) => onUpdate({ error: err.code, speedKmh: smoothed ?? 0, deltaKm: 0, moving: false }),
     { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 }

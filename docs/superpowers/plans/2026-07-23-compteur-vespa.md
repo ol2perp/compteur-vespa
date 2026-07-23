@@ -377,9 +377,11 @@ export function startGeo(onUpdate, opts = {}) {
         t: pos.timestamp,
       }
       const r = processFix(prev, fix, opts)
-      if (!r.rejected) prev = fix
-      smoothed = ema(smoothed, r.speedKmh, 0.4)
-      onUpdate({ ...r, speedKmh: r.rejected ? (smoothed ?? 0) : smoothed })
+      if (!r.rejected) {
+        prev = fix
+        smoothed = ema(smoothed, r.speedKmh, 0.4) // only smooth accepted fixes
+      }
+      onUpdate({ ...r, speedKmh: smoothed ?? 0 }) // hold last good speed on rejection
     },
     (err) => onUpdate({ error: err.code, speedKmh: smoothed ?? 0, deltaKm: 0, moving: false }),
     { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 }
@@ -1272,3 +1274,8 @@ Open the Pages URL in Safari → Share → "Sur l'écran d'accueil". Launch from
 - **Spec §8 robustness:** accuracy filter / stop threshold / jump rejection (T3), persistence (T2/T9), wake lock (T9). GPS-loss "GPS ?" display is a small enhancement — add to `dials.render` if `state.gpsError` once field wiring exists (noted, low priority).
 - **Type consistency:** `snapshot()` shapes, `createFuel`/`createTrip` init keys, and `store` DEFAULTS keys align across tasks.
 - **Known V1 simplification:** the SVG's two-tone scale numbers (black 0-60 / white 80-120) are static; only the `#Jauge` sweep is dynamic. Acceptable for V1; refine later if desired.
+
+## Deferred robustness items (post-V1, from code review)
+
+- `geo.js` jump check uses derived km/h with no minimum-`dt` floor: rapid/duplicate `watchPosition` callbacks over a few meters can compute an inflated derived speed and falsely reject a normal fix. Add a min-dt floor or accuracy-aware slack.
+- `geo.js` `startGeo` error handler reports `moving:false, deltaKm:0` on any geolocation error (incl. transient timeouts), which will flash a "stopped" state. Consider debouncing transient errors before surfacing them to the gauge.
