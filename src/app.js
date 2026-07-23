@@ -1,28 +1,104 @@
-// src/app.js
+import { createStore } from './store.js'
+import { startGeo } from './geo.js'
+import { createTrip } from './trip.js'
+import { createFuel } from './fuel.js'
 import { createGauge } from './gauge.js'
 import { createDials } from './dials.js'
+import { createControls } from './controls.js'
+
+const store = createStore()
+const saved = store.load()
+const trip = createTrip({ totalKm: saved.totalKm, dailyKm: saved.dailyKm })
+const fuel = createFuel(saved)
+
+let lastSpeed = 0
+let lastT = null
 
 async function loadSvg() {
   const res = await fetch('./compteur.svg')
-  const text = await res.text()
   const stage = document.getElementById('stage')
-  stage.innerHTML = text
+  stage.innerHTML = await res.text()
   const svg = stage.querySelector('svg')
   svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
-  svg.style.position = 'absolute'
-  svg.style.inset = '0'
-  svg.style.width = '100%'
-  svg.style.height = '100%'
-  return svg
+  Object.assign(svg.style, { position: 'absolute', inset: '0', width: '100%', height: '100%' })
+  return { stage, svg }
 }
 
-loadSvg().then((svg) => {
-  const stage = document.getElementById('stage')
+function persist() {
+  const t = trip.snapshot()
+  const f = fuel.snapshot()
+  store.save({ ...f, totalKm: t.totalKm, dailyKm: t.dailyKm })
+}
+
+loadSvg().then(({ stage, svg }) => {
   const gauge = createGauge(svg)
   const dials = createDials(stage)
-  dials.render({
-    avgSpeedKmh: 65, kmToEmpty: 50, reserve: false, instantLPer100: 6,
-    elapsedSec: 32 * 60, totalKm: 3826, dailyKm: 353,
+
+  dials.onResetDaily(() => { trip.resetDaily(); persist(); render() })
+
+  createControls(stage, {
+    getState: () => ({ ...fuel.snapshot(), totalKm: trip.snapshot().totalKm }),
+    onPlein: () => { fuel.plein(trip.snapshot().totalKm); persist(); render() },
+    onReserve: () => {
+      if (!confirm('Confirmer le passage en réserve ? (le niveau sera recalé à 1,4 L)')) return
+      const r = fuel.reserve(trip.snapshot().totalKm)
+      alert(r.accepted ? `Calibré : ${r.lPer100.toFixed(1)} L/100` : 'Réserve enregistrée (cycle non calibré)')
+      persist(); render()
+    },
+    onPassenger: (on) => { fuel.setPassenger(on); persist() },
+    onSetTotalKm: (v) => {
+      const f = fuel.snapshot()
+      store.save({ ...f, totalKm: v, dailyKm: trip.snapshot().dailyKm })
+      location.reload()
+    },
+    onSetCalib: (v) => {
+      const f = fuel.snapshot()
+      store.save({ ...f, calibratedLPer100: v, totalKm: trip.snapshot().totalKm, dailyKm: trip.snapshot().dailyKm })
+      location.reload()
+    },
   })
-  gauge.setSpeed(65)
+
+  function render() {
+    const t = trip.snapshot()
+    const speed = lastSpeed
+    gauge.setSpeed(speed)
+    dials.render({
+      avgSpeedKmh: t.avgSpeedKmh,
+      kmToEmpty: fuel.kmToEmpty(),
+      reserve: fuel.isReserve(),
+      instantLPer100: fuel.instant(speed, 0),
+      elapsedSec: t.elapsedSec,
+      totalKm: t.totalKm,
+      dailyKm: t.dailyKm,
+    })
+  }
+
+  startGeo((u) => {
+    const now = performance.now()
+    const dtSec = lastT == null ? 0 : (now - lastT) / 1000
+    lastT = now
+    const accelKmhs = dtSec > 0 ? (u.speedKmh - lastSpeed) / dtSec : 0
+    lastSpeed = u.speedKmh
+
+    trip.update({ deltaKm: u.deltaKm, moving: u.moving, dtSec })
+    if (u.moving) fuel.consume(u.deltaKm, fuel.instant(u.speedKmh, accelKmhs))
+    else fuel.consumeIdle(dtSec)
+    render()
+    persist()
+  })
+
+  render()
+  setInterval(render, 1000) // keep the wall clock + elapsed display live even between GPS fixes
+  requestWakeLock()
 })
+
+async function requestWakeLock() {
+  try {
+    if ('wakeLock' in navigator) {
+      let lock = await navigator.wakeLock.request('screen')
+      document.addEventListener('visibilitychange', async () => {
+        if (document.visibilityState === 'visible') lock = await navigator.wakeLock.request('screen')
+      })
+    }
+  } catch { /* wake lock unavailable — screen may sleep */ }
+}
