@@ -1,4 +1,6 @@
 // src/app.js
+import { createGauge } from './gauge.js'
+
 async function loadSvg() {
   const res = await fetch('./compteur.svg')
   const text = await res.text()
@@ -14,5 +16,6 @@ async function loadSvg() {
 }
 
 loadSvg().then((svg) => {
-  console.log('SVG loaded, viewBox =', svg.getAttribute('viewBox'))
+  const gauge = createGauge(svg)
+  console.log('gauge ready', gauge)
 })
