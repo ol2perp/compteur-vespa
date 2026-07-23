@@ -1293,3 +1293,10 @@ Open the Pages URL in Safari → Share → "Sur l'écran d'accueil". Launch from
 
 - `geo.js` jump check uses derived km/h with no minimum-`dt` floor: rapid/duplicate `watchPosition` callbacks over a few meters can compute an inflated derived speed and falsely reject a normal fix. Add a min-dt floor or accuracy-aware slack.
 - `geo.js` `startGeo` error handler reports `moving:false, deltaKm:0` on any geolocation error (incl. transient timeouts), which will flash a "stopped" state. Consider debouncing transient errors before surfacing them to the gauge.
+- `app.js` displayed instant consumption uses `fuel.instant(speed, 0)` (ignores acceleration) while actual tank drain uses `fuel.instant(speed, accelKmhs)`. Intentional for V1 (steady-state readout), but during hard acceleration `kmToEmpty` drops faster than the shown L/100. Revisit if the mismatch is confusing on the road.
+- `app.js` feeds `u.moving` from geo directly: on sustained low-accuracy stretches (tunnel/urban canyon) fixes are rejected → `moving:false` → fuel deducted at the idle rate while the gauge holds the last speed, making `kmToEmpty` slightly optimistic after such stretches. Acceptable for V1.
+
+## Post-implementation adjustments (applied during execution)
+
+- **T6:** production SVG is now derived by `scripts/clean-svg.py` (strips baked-in sample text/images from the `Cadran*` groups) instead of a raw copy — the HTML overlays are transparent and the baked content showed through. Verified via headless screenshot.
+- **T9:** added `src/settings.js` (`parseSettingsNumber`, unit-tested) to validate the km-total/calibration inputs — raw `Number('')` was `0` and silently zeroed the odometer/calibration on an accidental blur. `requestWakeLock` now registers the `visibilitychange` re-acquire listener unconditionally (so a hidden-at-launch first failure doesn't permanently disable it). `onPassenger` now re-renders immediately.
