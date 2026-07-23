@@ -18,12 +18,12 @@ export function createStore(storage = globalThis.localStorage) {
     load() {
       try {
         const raw = storage.getItem(KEY)
-        if (!raw) return { ...DEFAULTS }
+        if (!raw) return { ...DEFAULTS, cycles: [...DEFAULTS.cycles] }
         const parsed = JSON.parse(raw)
-        if (parsed.version !== SCHEMA_VERSION) return { ...DEFAULTS }
-        return { ...DEFAULTS, ...parsed }
+        if (parsed.version !== SCHEMA_VERSION) return { ...DEFAULTS, cycles: [...DEFAULTS.cycles] }
+        return { ...DEFAULTS, ...parsed, cycles: parsed.cycles ? parsed.cycles : [...DEFAULTS.cycles] }
       } catch {
-        return { ...DEFAULTS }
+        return { ...DEFAULTS, cycles: [...DEFAULTS.cycles] }
       }
     },
     save(state) {

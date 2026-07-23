@@ -33,4 +33,12 @@ describe('store', () => {
     s.setItem('compteur-vespa-v1', JSON.stringify({ version: 999, totalKm: 1 }))
     expect(createStore(s).load()).toEqual(DEFAULTS)
   })
+
+  it('does not leak mutations to a returned cycles array into later loads', () => {
+    const store = createStore(fakeStorage())
+    const first = store.load()
+    first.cycles.push({ distanceKm: 10, lPer100: 5 })
+    const second = store.load()
+    expect(second.cycles).toEqual([])
+  })
 })
