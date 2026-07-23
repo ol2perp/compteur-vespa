@@ -1,5 +1,6 @@
 // src/app.js
 import { createGauge } from './gauge.js'
+import { createDials } from './dials.js'
 
 async function loadSvg() {
   const res = await fetch('./compteur.svg')
@@ -16,6 +17,12 @@ async function loadSvg() {
 }
 
 loadSvg().then((svg) => {
+  const stage = document.getElementById('stage')
   const gauge = createGauge(svg)
-  console.log('gauge ready', gauge)
+  const dials = createDials(stage)
+  dials.render({
+    avgSpeedKmh: 65, kmToEmpty: 50, reserve: false, instantLPer100: 6,
+    elapsedSec: 32 * 60, totalKm: 3826, dailyKm: 353,
+  })
+  gauge.setSpeed(65)
 })
