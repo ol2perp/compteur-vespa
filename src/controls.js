@@ -18,6 +18,7 @@ export function createControls(stage, handlers) {
     <h2 style="margin:0">Réglages</h2>
     <button data-act="plein" style="padding:1.5vh">⛽ Plein (réservoir plein)</button>
     <button data-act="reserve" style="padding:1.5vh">⚠ Passage en réserve</button>
+    <button data-act="newtrip" style="padding:1.5vh">🔄 Nouveau trajet (reset chrono)</button>
     <label style="display:flex;gap:1vw;align-items:center">
       <input type="checkbox" data-act="passenger" /> Passager (2 personnes)
     </label>
@@ -37,6 +38,7 @@ export function createControls(stage, handlers) {
   q('close').addEventListener('click', () => (panel.style.display = 'none'))
   q('plein').addEventListener('click', () => handlers.onPlein())
   q('reserve').addEventListener('click', () => handlers.onReserve())
+  q('newtrip').addEventListener('click', () => handlers.onNewTrip())
   q('passenger').addEventListener('change', (e) => handlers.onPassenger(e.target.checked))
   q('totalKm').addEventListener('change', (e) => handlers.onSetTotalKm(e.target.value))
   q('calib').addEventListener('change', (e) => handlers.onSetCalib(e.target.value))

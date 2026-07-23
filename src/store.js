@@ -11,6 +11,9 @@ export const DEFAULTS = Object.freeze({
   passenger: false,
   lastPleinTotalKm: null,
   cycles: [], // { distanceKm, lPer100 }
+  sessionDistanceKm: 0,
+  movingSec: 0,
+  stoppedSec: 0,
 })
 
 export function createStore(storage = globalThis.localStorage) {

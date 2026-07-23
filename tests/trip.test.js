@@ -37,4 +37,28 @@ describe('trip', () => {
     expect(s.dailyKm).toBe(0)
     expect(s.totalKm).toBe(100)
   })
+
+  it('seeds session state (distance/moving/stopped) from init', () => {
+    const t = createTrip({ totalKm: 10, dailyKm: 5, sessionDistanceKm: 3, movingSec: 120, stoppedSec: 30 })
+    const s = t.snapshot()
+    expect(s.sessionDistanceKm).toBe(3)
+    expect(s.movingSec).toBe(120)
+    expect(s.stoppedSec).toBe(30)
+    expect(s.elapsedSec).toBe(150)
+    // avg = 3 km / (150s/3600) = 72 km/h
+    expect(s.avgSpeedKmh).toBeCloseTo(72, 1)
+  })
+
+  it('resetSession zeros session state but keeps total/daily km', () => {
+    const t = createTrip({ totalKm: 100, dailyKm: 42, sessionDistanceKm: 8, movingSec: 300, stoppedSec: 60 })
+    t.resetSession()
+    const s = t.snapshot()
+    expect(s.sessionDistanceKm).toBe(0)
+    expect(s.movingSec).toBe(0)
+    expect(s.stoppedSec).toBe(0)
+    expect(s.elapsedSec).toBe(0)
+    expect(s.avgSpeedKmh).toBe(0)
+    expect(s.totalKm).toBe(100)
+    expect(s.dailyKm).toBe(42)
+  })
 })

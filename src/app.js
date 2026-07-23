@@ -9,7 +9,13 @@ import { parseSettingsNumber } from './settings.js'
 
 const store = createStore()
 const saved = store.load()
-const trip = createTrip({ totalKm: saved.totalKm, dailyKm: saved.dailyKm })
+const trip = createTrip({
+  totalKm: saved.totalKm,
+  dailyKm: saved.dailyKm,
+  sessionDistanceKm: saved.sessionDistanceKm,
+  movingSec: saved.movingSec,
+  stoppedSec: saved.stoppedSec,
+})
 const fuel = createFuel(saved)
 
 let lastSpeed = 0
@@ -28,7 +34,8 @@ async function loadSvg() {
 function persist() {
   const t = trip.snapshot()
   const f = fuel.snapshot()
-  store.save({ ...f, totalKm: t.totalKm, dailyKm: t.dailyKm })
+  store.save({ ...f, totalKm: t.totalKm, dailyKm: t.dailyKm,
+    sessionDistanceKm: t.sessionDistanceKm, movingSec: t.movingSec, stoppedSec: t.stoppedSec })
 }
 
 loadSvg().then(({ stage, svg }) => {
@@ -47,18 +54,23 @@ loadSvg().then(({ stage, svg }) => {
       persist(); render()
     },
     onPassenger: (on) => { fuel.setPassenger(on); persist(); render() },
+    onNewTrip: () => { trip.resetSession(); persist(); render() },
     onSetTotalKm: (raw) => {
       const v = parseSettingsNumber(raw, { min: 0 })
       if (v == null) return
       const f = fuel.snapshot()
-      store.save({ ...f, totalKm: v, dailyKm: trip.snapshot().dailyKm })
+      const t = trip.snapshot()
+      store.save({ ...f, totalKm: v, dailyKm: t.dailyKm,
+        sessionDistanceKm: t.sessionDistanceKm, movingSec: t.movingSec, stoppedSec: t.stoppedSec })
       location.reload()
     },
     onSetCalib: (raw) => {
       const v = parseSettingsNumber(raw, { min: 0.1 })
       if (v == null) return
       const f = fuel.snapshot()
-      store.save({ ...f, calibratedLPer100: v, totalKm: trip.snapshot().totalKm, dailyKm: trip.snapshot().dailyKm })
+      const t = trip.snapshot()
+      store.save({ ...f, calibratedLPer100: v, totalKm: t.totalKm, dailyKm: t.dailyKm,
+        sessionDistanceKm: t.sessionDistanceKm, movingSec: t.movingSec, stoppedSec: t.stoppedSec })
       location.reload()
     },
   })

@@ -1,9 +1,9 @@
 export function createTrip(init = {}) {
   let totalKm = init.totalKm ?? 0
   let dailyKm = init.dailyKm ?? 0
-  let sessionDistanceKm = 0
-  let movingSec = 0
-  let stoppedSec = 0
+  let sessionDistanceKm = init.sessionDistanceKm ?? 0
+  let movingSec = init.movingSec ?? 0
+  let stoppedSec = init.stoppedSec ?? 0
 
   return {
     update({ deltaKm = 0, moving = false, dtSec = 0 }) {
@@ -19,6 +19,11 @@ export function createTrip(init = {}) {
     },
     resetDaily() {
       dailyKm = 0
+    },
+    resetSession() {
+      sessionDistanceKm = 0
+      movingSec = 0
+      stoppedSec = 0
     },
     snapshot() {
       return {
