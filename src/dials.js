@@ -1,80 +1,104 @@
-const POS = {
-  conso:  { x: 29.9, y: 60.3 },
-  heures: { x: 42.4, y: 68.6 },
-  meteo:  { x: 55.7, y: 68.6 },
-  km:     { x: 68.4, y: 60.2 },
+// Writes live values directly into the <text>/<tspan> nodes authored in
+// V_1-MAIN.svg — font, size, color, position all come from the SVG's own
+// CSS/position, so this module only ever touches textContent (plus the one
+// reserve-color override on the CONSO dial).
+
+function yOf(text) {
+  const m = /translate\(\s*[-\d.]+[\s,]+([-\d.]+)\s*\)/.exec(text.getAttribute('transform') || '')
+  return m ? parseFloat(m[1]) : 0
 }
 
-function makeDial(stage, key) {
-  const el = document.createElement('div')
-  el.className = `dial dial-${key}`
-  Object.assign(el.style, {
-    position: 'absolute',
-    left: POS[key].x + '%',
-    top: POS[key].y + '%',
-    transform: 'translate(-50%, -50%)',
-    width: '11.8%',
-    aspectRatio: '1',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    textAlign: 'center',
-    lineHeight: '1.1',
-    color: '#111',
-    pointerEvents: 'none',
-  })
-  stage.appendChild(el)
-  return el
+// Illustrator appends a digit to a group's id whenever the designer
+// duplicates a layer (e.g. "Cadran-HEURES" -> "Cadran-HEURES1"), so match on
+// the stable prefix rather than the exact id.
+function findGroup(svg, prefix) {
+  const g = svg.querySelector(`g[id^="${prefix}"]`)
+  if (!g) throw new Error(`dial group not found: ${prefix}`)
+  return g
 }
 
-export function createDials(stage) {
-  const els = {
-    conso: makeDial(stage, 'conso'),
-    heures: makeDial(stage, 'heures'),
-    meteo: makeDial(stage, 'meteo'),
-    km: makeDial(stage, 'km'),
-  }
+// <text> nodes of a dial group, top-to-bottom (ascending y); ties (e.g. an
+// odometer's prefix + colored last-digit tspans living in one <text>, or two
+// texts sharing a y) keep their original document order via stable sort.
+function textsOf(group) {
+  return [...group.querySelectorAll('text')].sort((a, b) => yOf(a) - yOf(b))
+}
 
-  // Meteo reserved for V2
-  els.meteo.innerHTML =
-    `<div style="opacity:.5;font-size:3cqw">☁</div><div style="opacity:.6;font-size:1.9cqw">Météo · V2</div>`
+function setOdo(textEl, km, digits) {
+  const s = String(Math.max(0, Math.round(km * 10))).padStart(digits, '0')
+  const tspans = textEl.querySelectorAll('tspan')
+  tspans[0].textContent = s.slice(0, -1)
+  tspans[1].textContent = s.slice(-1)
+}
 
-  function fmtHM(totalSec) {
-    const h = Math.floor(totalSec / 3600)
-    const m = Math.floor((totalSec % 3600) / 60)
-    return `${h}h${String(m).padStart(2, '0')}`
-  }
-  function fmtClock(d) {
-    return `${String(d.getHours()).padStart(2, '0')}h${String(d.getMinutes()).padStart(2, '0')}`
-  }
-  function fmtDate(d) {
-    return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
-  }
-  const band = (t) => `<div style="background:#3a5f6a;color:#fff;border-radius:5px;padding:0 6px;margin:2px 0;font-size:2.2cqw;font-weight:800">${t}</div>`
-  const big = (t) => `<div style="font-size:3.6cqw;font-weight:800">${t}</div>`
-  const unit = (t) => `<span style="font-size:1.7cqw;font-weight:600">${t}</span>`
+const frFixed1 = (n) => n.toFixed(1).replace('.', ',')
+
+function fmtHM(totalSec) {
+  const h = Math.floor(totalSec / 3600)
+  const m = Math.floor((totalSec % 3600) / 60)
+  return `${h}h${String(m).padStart(2, '0')}`
+}
+function fmtClock(d) {
+  return `${String(d.getHours()).padStart(2, '0')}h${String(d.getMinutes()).padStart(2, '0')}`
+}
+function fmtDate(d) {
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
+}
+
+export function createDials(stage, svg) {
+  const consoGroup = findGroup(svg, 'Cadran_CONSO')
+  const heuresGroup = findGroup(svg, 'Cadran-HEURES')
+  const vitesseGroup = findGroup(svg, 'Cabdran-Vitesse')
+  const kmGroup = findGroup(svg, 'Cadran-KM')
+  const nbPersGroup = findGroup(svg, 'Cadrage-NbPersonnes')
+
+  const [speedText, kmToEmptyText, instantText] = textsOf(consoGroup)
+  const [clockText, dateText, elapsedText] = textsOf(heuresGroup)
+  const [rawSpeedText] = textsOf(vitesseGroup)
+  const [dailyText, totalText] = textsOf(kmGroup)
+  const [nbPersText] = textsOf(nbPersGroup)
+
+  // Listen on the group (not the shape) so clicks on the overlapping <text> —
+  // painted on top, and a sibling rather than a descendant of the shape —
+  // still bubble to the handler; pointer-events:all on the fill:none shape
+  // makes the rest of the circle (not covered by text) clickable too.
+  const consoShape = consoGroup.querySelector('ellipse, circle')
+  if (consoShape) consoShape.style.pointerEvents = 'all'
+  const nbPersShape = nbPersGroup.querySelector('ellipse, circle')
+  if (nbPersShape) nbPersShape.style.pointerEvents = 'all'
+  // The KM dial's "reset" label is now baked into the background (no text
+  // node to target), so the tap zone is the shape only — not the group —
+  // so tapping the daily/total numbers themselves doesn't also trigger reset.
+  const kmShape = kmGroup.querySelector('ellipse, circle')
+  if (kmShape) kmShape.style.pointerEvents = 'all'
 
   return {
     render(state) {
       const now = new Date()
-      // conso: avg speed / km-to-empty + pump / L/100
-      els.conso.innerHTML =
-        big(`${Math.round(state.avgSpeedKmh)}${unit('km/h')}`) +
-        `<div style="background:${state.reserve ? '#b23' : '#3a5f6a'};color:#fff;border-radius:5px;padding:0 6px;margin:2px 0;font-size:2.4cqw;font-weight:800">${Math.round(state.kmToEmpty)}${unit('Km')} ⛽</div>` +
-        `<div style="font-size:2.6cqw;font-weight:700">${state.instantLPer100.toFixed(1)}${unit('L/100')}</div>`
-      // heures: clock / date / elapsed
-      els.heures.innerHTML = big(fmtClock(now)) + band(fmtDate(now)) + big(fmtHM(state.elapsedSec))
-      // km: daily / reset / total
-      const total = String(Math.floor(state.totalKm)).padStart(6, '0')
-      els.km.innerHTML =
-        big(String(Math.floor(state.dailyKm)).padStart(4, '0')) +
-        band('reset') +
-        big(`${total.slice(0, 5)}<span style="color:#e33">${total.slice(5)}</span>`)
+      speedText.textContent = String(Math.round(state.avgSpeedKmh))
+      kmToEmptyText.textContent = String(Math.round(state.kmToEmpty))
+      kmToEmptyText.style.fill = state.reserve ? '#ff5555' : ''
+      instantText.textContent = frFixed1(state.instantLPer100)
+
+      clockText.textContent = fmtClock(now)
+      dateText.textContent = fmtDate(now)
+      elapsedText.textContent = fmtHM(state.elapsedSec)
+
+      rawSpeedText.textContent = String(Math.round(state.speedKmh ?? 0))
+
+      setOdo(dailyText, state.dailyKm, 4)
+      setOdo(totalText, state.totalKm, 6)
+
+      nbPersText.textContent = state.passenger ? '2' : '1'
     },
     onResetDaily(cb) {
-      els.km.style.pointerEvents = 'auto'
-      els.km.addEventListener('click', cb)
+      if (kmShape) kmShape.addEventListener('click', cb)
+    },
+    onReserveTap(cb) {
+      consoGroup.addEventListener('click', cb)
+    },
+    onPassengerTap(cb) {
+      nbPersGroup.addEventListener('click', cb)
     },
   }
 }

@@ -27,11 +27,12 @@ export function instantLPer100({ base, speedKmh, accelKmhs = 0, passenger = fals
 
 export function createFuel(init = {}) {
   let tankLevel = init.tankLevel ?? TANK_L
-  let calibratedLPer100 = init.calibratedLPer100 ?? 6.0
+  let calibratedLPer100 = init.calibratedLPer100 ?? 5.1
   let passengerSurchargePct = init.passengerSurchargePct ?? 10
   let passenger = init.passenger ?? false
   let lastPleinTotalKm = init.lastPleinTotalKm ?? null
   const cycles = init.cycles ? [...init.cycles] : []
+  let lastReserveSnapshot = null
 
   function recalibrate() {
     if (cycles.length === 0) return
@@ -51,8 +52,10 @@ export function createFuel(init = {}) {
     plein(totalKm) {
       tankLevel = TANK_L
       lastPleinTotalKm = totalKm
+      lastReserveSnapshot = null
     },
     reserve(totalKm) {
+      lastReserveSnapshot = { tankLevel, calibratedLPer100, lastPleinTotalKm, cycles: [...cycles] }
       let accepted = false
       let lPer100
       if (lastPleinTotalKm != null) {
@@ -67,6 +70,15 @@ export function createFuel(init = {}) {
       tankLevel = RESERVE_L // resync estimate to reality
       lastPleinTotalKm = null
       return accepted ? { accepted, lPer100 } : { accepted }
+    },
+    // Undo the most recent reserve() call (e.g. an accidental tap on the CONSO dial).
+    cancelReserve() {
+      if (!lastReserveSnapshot) return false
+      ;({ tankLevel, calibratedLPer100, lastPleinTotalKm } = lastReserveSnapshot)
+      cycles.length = 0
+      cycles.push(...lastReserveSnapshot.cycles)
+      lastReserveSnapshot = null
+      return true
     },
     setPassenger(on) { passenger = !!on },
     isReserve() { return tankLevel <= RESERVE_L },

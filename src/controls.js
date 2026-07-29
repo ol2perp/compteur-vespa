@@ -17,14 +17,14 @@ export function createControls(stage, handlers) {
   panel.innerHTML = `
     <h2 style="margin:0">Réglages</h2>
     <button data-act="plein" style="padding:1.5vh">⛽ Plein (réservoir plein)</button>
-    <button data-act="reserve" style="padding:1.5vh">⚠ Passage en réserve</button>
+    <button data-act="annulreserve" style="padding:1.5vh">↩︎ Annuler réserve (tap accidentel)</button>
     <button data-act="newtrip" style="padding:1.5vh">🔄 Nouveau trajet (reset chrono)</button>
     <label style="display:flex;gap:1vw;align-items:center">
       <input type="checkbox" data-act="passenger" /> Passager (2 personnes)
     </label>
     <label>Km total <input type="number" data-act="totalKm" style="width:8em" /></label>
     <label>Conso calibrée (L/100) <input type="number" step="0.1" data-act="calib" style="width:6em" /></label>
-    <button data-act="close" style="padding:1.5vh;margin-top:auto">Fermer</button>
+    <button data-act="close" style="padding:1.5vh;margin-top:auto">✕</button>
   `
   stage.appendChild(panel)
 
@@ -37,7 +37,7 @@ export function createControls(stage, handlers) {
   })
   q('close').addEventListener('click', () => (panel.style.display = 'none'))
   q('plein').addEventListener('click', () => handlers.onPlein())
-  q('reserve').addEventListener('click', () => handlers.onReserve())
+  q('annulreserve').addEventListener('click', () => handlers.onAnnulReserve())
   q('newtrip').addEventListener('click', () => handlers.onNewTrip())
   q('passenger').addEventListener('change', (e) => handlers.onPassenger(e.target.checked))
   q('totalKm').addEventListener('change', (e) => handlers.onSetTotalKm(e.target.value))

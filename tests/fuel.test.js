@@ -91,3 +91,42 @@ describe('calibration (plein -> reserve)', () => {
     expect(f.snapshot().calibratedLPer100).toBeCloseTo(5.185, 2)
   })
 })
+
+describe('cancelReserve (undo an accidental tap)', () => {
+  it('restores tank, calibration and lastPleinTotalKm from before the reserve() call', () => {
+    const f = createFuel({ tankLevel: 5, calibratedLPer100: 6 })
+    f.plein(1000)
+    f.reserve(1180) // accepted cycle, recalibrates to 3.5
+    expect(f.cancelReserve()).toBe(true)
+    const s = f.snapshot()
+    expect(s.tankLevel).toBe(TANK_L) // back to what plein() had set
+    expect(s.calibratedLPer100).toBe(6)
+    expect(s.lastPleinTotalKm).toBe(1000)
+  })
+
+  it('does not leave a stray cycle behind after cancelling an accepted reserve', () => {
+    const f = createFuel({ calibratedLPer100: 6 })
+    f.plein(1000)
+    f.reserve(1180)
+    f.cancelReserve()
+    f.plein(1180)
+    const r = f.reserve(1180 + 180) // fresh 180 km cycle, same L/100 as before
+    expect(r.accepted).toBe(true)
+    // if the cancelled cycle had stuck around, this would double-weight and skew the average
+    expect(f.snapshot().calibratedLPer100).toBeCloseTo(3.5, 2)
+  })
+
+  it('returns false and is a no-op when there is nothing to cancel', () => {
+    const f = createFuel({ tankLevel: 5 })
+    expect(f.cancelReserve()).toBe(false)
+    expect(f.snapshot().tankLevel).toBe(5)
+  })
+
+  it('a subsequent plein() clears the undo snapshot', () => {
+    const f = createFuel({ calibratedLPer100: 6 })
+    f.plein(1000)
+    f.reserve(1180)
+    f.plein(1180) // confirms the reserve was real; nothing left to undo
+    expect(f.cancelReserve()).toBe(false)
+  })
+})

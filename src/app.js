@@ -40,19 +40,16 @@ function persist() {
 
 loadSvg().then(({ stage, svg }) => {
   const gauge = createGauge(svg)
-  const dials = createDials(stage)
+  const dials = createDials(stage, svg)
 
-  dials.onResetDaily(() => { trip.resetDaily(); persist(); render() })
+  dials.onResetDaily(() => { trip.resetDaily(); trip.resetSession(); persist(); render() })
+  dials.onReserveTap(() => { fuel.reserve(trip.snapshot().totalKm); persist(); render() })
+  dials.onPassengerTap(() => { fuel.setPassenger(!fuel.snapshot().passenger); persist(); render() })
 
   createControls(stage, {
     getState: () => ({ ...fuel.snapshot(), totalKm: trip.snapshot().totalKm }),
     onPlein: () => { fuel.plein(trip.snapshot().totalKm); persist(); render() },
-    onReserve: () => {
-      if (!confirm('Confirmer le passage en réserve ? (le niveau sera recalé à 1,4 L)')) return
-      const r = fuel.reserve(trip.snapshot().totalKm)
-      alert(r.accepted ? `Calibré : ${r.lPer100.toFixed(1)} L/100` : 'Réserve enregistrée (cycle non calibré)')
-      persist(); render()
-    },
+    onAnnulReserve: () => { fuel.cancelReserve(); persist(); render() },
     onPassenger: (on) => { fuel.setPassenger(on); persist(); render() },
     onNewTrip: () => { trip.resetSession(); persist(); render() },
     onSetTotalKm: (raw) => {
@@ -80,6 +77,7 @@ loadSvg().then(({ stage, svg }) => {
     const speed = lastSpeed
     gauge.setSpeed(speed)
     dials.render({
+      speedKmh: speed,
       avgSpeedKmh: t.avgSpeedKmh,
       kmToEmpty: fuel.kmToEmpty(),
       reserve: fuel.isReserve(),
@@ -87,6 +85,7 @@ loadSvg().then(({ stage, svg }) => {
       elapsedSec: t.elapsedSec,
       totalKm: t.totalKm,
       dailyKm: t.dailyKm,
+      passenger: fuel.snapshot().passenger,
     })
   }
 

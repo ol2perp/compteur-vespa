@@ -3,10 +3,10 @@ const KEY = 'compteur-vespa-v1'
 
 export const DEFAULTS = Object.freeze({
   version: SCHEMA_VERSION,
-  totalKm: 388,
+  totalKm: 538,
   dailyKm: 0,
   tankLevel: 7.7,
-  calibratedLPer100: 6.0,
+  calibratedLPer100: 5.1,
   passengerSurchargePct: 10,
   passenger: false,
   lastPleinTotalKm: null,
