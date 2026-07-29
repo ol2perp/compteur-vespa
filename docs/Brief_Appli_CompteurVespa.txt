@@ -1,0 +1,83 @@
+COMPTEUR VESPA - APPLI IPHONE
+
+Clone de Bike tracker (on choisi celui là car je m’en sert en vélo)
+
+Je veux Afficher:
+la vitesse réelle
+La vitesse moyenne
+- les Km journalers + BOUT reset
+- les Km totaux (on commence avec une estimation faite depuis la refection du moteur: KM Total= 388
+- la Conso pour 100Km +  (estimation de combien de Km avant panne seche): j’ai une 1ère estimation de 6l aux 100 - on affinera au fur et à mesure avec ds mésure précises de la Q d’essense dans le réservoir et la distance réelle parcourue.  Il faut donc pouvoir facilement modifier cette data
+un Timer (affiche date et  l’heure et stock les temps de trajets et les temps d’arrets sur les trajets)
+- Meteo d’où je suis pour les 2 heures à venir (temperature - vent en Km/h -Pluie (un peu - moyen - beaucoup)
+Un switch 1 ou 2 personnes sur le scooter (si le poids entre en compte dans le calcul de la consommation)
+Un GPS (dans un second temps si tout le reste marche)
+
+Poids du Scooter+Pilote: 90Kg à vide + 5kg essence + contenu du coffre (huile - outils - antivol…) 10Kg + Pilote casqué: 95Kg
+Poids du Scooter+Pilote+Passager= Poids du Scooter+Pilote+70Kg
+Reservoir d’essece: 7,7l dont 1,4l de Réserve
+
+Je voudrai avec ces datas + le dénivelé parcouru (comme dans BikeTracker) , affiner la consommation:
+En partant des principes suivants:
+On consomme moins en descente - normalement sur du plat - et plus en montée
+on consomme très peu immobile (Ralenti)  et beaucoup au demarrage (passage en première -puis 2 -puis 3 ) et c’est en 4 bien lancé = conso optimale
+
+Est-ce qu’on peut déterminer les valeurs suivantes? En pourcentage à rajouter ou a enlever de la consommation normale?
+En 4éme vitesse à 80km/h: conso normale= 6l/100 (pour l’instant)
+Au Ralenti: consommation minimale= ?
+Demarrage - Acceleration: sur consomation max= ?
+Montée:  sur consommation moyenne=?
+Descente: sous consommation=?
+
+
+Si je fait le plein, je roule en lançant l’application jusqu’à ce que je tombe en réserve on aura brulé 7,7-1,4 litres d’essence
+Avec: les vitesses les kilometres - les Temps d’arrets donc les redemarrges - et le dénivelé le Poids on pourra estimer précisément la consommation du scooter et une fois paramtrée dans l’application on aura la Conso et les kilometres restant sen  en temps réel, enfin je crois!
+
+
+
+Pour l’appli: uniquement horizontal (cf: Appli Compteur-Design.pdf)
+
+
+
+
+
+
+
+
+MODIFS - 28Juil26
+
+INFOS
+on vient de faire la V_0, notre point de départ. C’est maintenant que la V_1 commence
+Cadrans = Cercles du svg - Compteurs = textes dynamiques
+Les nouveaux éléments graphiques sont là:
+/Users/ol2perp/Desktop/Scoot/Appli_Compteur/docs/DesignGraphik/V_1
+
+MàJ DATAS:
+CONSO= 5,1 l/100 (condition rodage (cool  : 60/70 grand max) 
+KM de départ= 538 Km
+
+A-MAIN_Calage textes/chiffres dans les Cadrans
+NOUVEAU: tu ne gères que les txt dynamic  (tous les textes non dynamic (unités + picto ) sont à supprimer ils seront intégrés au BG.png 
+1- donnes moi la listes des familles de polices utilisables. je te dirai laquelle  et les différentes tailles à appliquer à chaque Txt Dynamyc
+2- les compteurs de Kilométres fonctionnent comme suit: de droite à gauche : le premier chiffre (d’une couleur différente) indique les centaines de mètres: 2=200m - le second: les Km: 2=2Km - le 3ème, les dizaines de KM 3=30Km….etc. on lit donc: 32,2Km
+Compteur journalier: max= 999,9
+Compteur total: max= 99999,9
+4- quand tout sera bien calé: on supprimera les bandeaux de fond des compteur  (ils seront aussi intégrés au BG.png 
+=> voir V_1-MAIN.svg pour construction +  typo :nom - tailles  - alignements - couleurs
+
+B-MAIN_Modifs
+1- pour l’instant dans le slot « Meteo » on place un compteur de vitesse type: 999 max (pour que je prenne en « oeil » la lecture de la VRAIE jauge de vitesse )
+2-Bouton 1ou2 pers : 1=affiché - on tape: 2=affiché - on re-tape: 1=affiché….
+3-cadran conso: faire un bouton de la taille du cercle qui indique au « Tap » qu’on est en réserve le texte du compteur Km restant passe couleur rouge (prévoir dans « parametre un bouton annuler)
+4- le bouton reset du compteurkm/jour reset aussi le chrono
+5- Bouton accés GPS (pour plus tard - pour l’instant juste un emplacement vide)
+=> voir V_1-MAIN.svg pour construction +  typo :nom - tailles  - alignements - couleurs
+
+C-REGLAGES_Modifs
+-Bouton PLEIN
+-Bouton Annul « réserve » = corriger un « tap » par erreur en B3
+-Champs conso 
+-Champs Km
+-Bouton Croix pour fermer
+	on conserve le fond noir un peu transparent tel quel
+=> voir V_1-REGLAGES.svg pour construction +  typo :nom - tailles  - alignements - couleurs

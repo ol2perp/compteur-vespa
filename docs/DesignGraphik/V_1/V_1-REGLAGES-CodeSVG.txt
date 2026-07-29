@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 1217.6 562.8">
+  <!-- Generator: Adobe Illustrator 30.6.0, SVG Export Plug-In . SVG Version: 2.1.4 Build 109)  -->
+  <defs>
+    <style>
+      .st0 {
+        fill: none;
+        stroke: #fff;
+        stroke-width: 3.6px;
+      }
+
+      .st0, .st1, .st2, .st3 {
+        stroke-miterlimit: 10;
+      }
+
+      .st4 {
+        fill: #e30617;
+      }
+
+      .st5, .st6, .st1, .st2, .st3 {
+        fill: #fff;
+      }
+
+      .st5, .st7 {
+        font-family: DINCondensed-Bold, 'DIN Condensed';
+        font-size: 47.1px;
+        font-weight: 700;
+      }
+
+      .st1 {
+        stroke-width: 1.2px;
+      }
+
+      .st1, .st2, .st3 {
+        stroke: #000;
+      }
+
+      .st2 {
+        stroke-width: 1.4px;
+      }
+
+      .st3 {
+        stroke-width: 1.5px;
+      }
+
+      .st8 {
+        opacity: .8;
+      }
+    </style>
+  </defs>
+  <g id="BG">
+    <rect class="st8" width="1217.6" height="562.8"/>
+  </g>
+  <g id="BOUT_QUITTER">
+    <circle class="st0" cx="1081.8" cy="105.5" r="29.5"/>
+    <path class="st6" d="M1085.6,105.5l9.9,9.9-3.8,3.8-9.9-9.9-9.9,9.9-3.8-3.8,9.9-9.9-9.8-9.8,3.8-3.8,9.8,9.8,9.8-9.8,3.8,3.8-9.8,9.8Z"/>
+  </g>
+  <g id="CHAMPS_x5F_KM">
+    <rect id="TEXTFIELD" class="st2" x="696.9" y="329.6" width="113.2" height="47"/>
+    <text class="st7" transform="translate(732.9 370.2)"><tspan x="0" y="0">0538</tspan></text>
+    <text class="st5" transform="translate(731 314)"><tspan x="0" y="0">KM</tspan></text>
+  </g>
+  <g id="CHAMPS_x5F_CONSO">
+    <rect id="TEXTFIELD1" data-name="TEXTFIELD" class="st1" x="416.4" y="329.6" width="77.9" height="47"/>
+    <text class="st7" transform="translate(435.4 370.5)"><tspan x="0" y="0">5,1</tspan></text>
+    <text class="st5" transform="translate(405.7 314.3)"><tspan x="0" y="0">CONSO</tspan></text>
+  </g>
+  <g id="BOUT_x5F_ANNULE_RESERVE">
+    <rect class="st3" x="654.8" y="174.5" width="192" height="64.9" rx="10.1" ry="10.1"/>
+    <text class="st7" transform="translate(699.8 223.6)"><tspan x="0" y="0">RESERVE</tspan></text>
+    <path class="st4" d="M682,191.1c-9.1,0-16.4,7.3-16.4,16.4s7.3,16.4,16.4,16.4,16.4-7.3,16.4-16.4-7.3-16.4-16.4-16.4ZM692.2,213.4l-4.4,4.4-5.8-5.8-5.8,5.8-4.4-4.4,5.8-5.8-5.8-5.8,4.4-4.4,5.8,5.8,5.8-5.8,4.4,4.4-5.8,5.8,5.8,5.8Z"/>
+  </g>
+  <g id="BOUT_x5F_PLEIN">
+    <rect class="st3" x="359.3" y="174.5" width="192" height="64.9" rx="10.1" ry="10.1"/>
+    <text class="st7" transform="translate(413 222.7)"><tspan x="0" y="0">PLEIN</tspan></text>
+  </g>
+</svg>
