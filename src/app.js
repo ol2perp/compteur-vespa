@@ -6,6 +6,7 @@ import { createGauge } from './gauge.js'
 import { createDials } from './dials.js'
 import { createControls } from './controls.js'
 import { parseSettingsNumber } from './settings.js'
+import { initOrientationLock } from './orientation.js'
 
 const store = createStore()
 const saved = store.load()
@@ -39,6 +40,7 @@ function persist() {
 }
 
 loadSvg().then(({ stage, svg }) => {
+  const orientation = initOrientationLock(stage)
   const gauge = createGauge(svg)
   const dials = createDials(stage, svg)
 
@@ -52,6 +54,7 @@ loadSvg().then(({ stage, svg }) => {
     onAnnulReserve: () => { fuel.cancelReserve(); persist(); render() },
     onPassenger: (on) => { fuel.setPassenger(on); persist(); render() },
     onNewTrip: () => { trip.resetSession(); persist(); render() },
+    onRecalibrateOrientation: () => orientation.lock(),
     onSetTotalKm: (raw) => {
       const v = parseSettingsNumber(raw, { min: 0 })
       if (v == null) return
