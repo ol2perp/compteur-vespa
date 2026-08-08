@@ -40,7 +40,7 @@ function persist() {
 }
 
 loadSvg().then(({ stage, svg }) => {
-  const orientation = initOrientationLock(stage)
+  initOrientationLock(stage)
   const gauge = createGauge(svg)
   const dials = createDials(stage, svg)
 
@@ -54,7 +54,6 @@ loadSvg().then(({ stage, svg }) => {
     onAnnulReserve: () => { fuel.cancelReserve(); persist(); render() },
     onPassenger: (on) => { fuel.setPassenger(on); persist(); render() },
     onNewTrip: () => { trip.resetSession(); persist(); render() },
-    onRecalibrateOrientation: () => orientation.lock(),
     onSetTotalKm: (raw) => {
       const v = parseSettingsNumber(raw, { min: 0 })
       if (v == null) return

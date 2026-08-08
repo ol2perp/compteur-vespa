@@ -91,14 +91,9 @@ export function createControls(stage, handlers) {
       left:${xw(359.3)}vw; top:${yh(410)}vh; width:${xw(487.5)}vw; height:${yh(64.9)}vh;
     "><span class="icon">🔄</span>NOUVEAU TRAJET</button>
 
-    <label class="passenger" style="left:${xw(359.3)}vw; top:${yh(490)}vh; width:${xw(240)}vw; justify-content:flex-start;">
-      <input type="checkbox" data-act="passenger" /> PASSAGER (2 PERS.)
+    <label class="passenger" style="left:${xw(359.3)}vw; top:${yh(490)}vh; width:${xw(487.5)}vw; justify-content:center;">
+      <input type="checkbox" data-act="passenger" /> PASSAGER (2 PERSONNES)
     </label>
-
-    <button data-act="recalorientation" style="
-      left:${xw(606.8)}vw; top:${yh(488)}vh; width:${xw(240)}vw; height:${yh(48)}vh;
-      font-size:${FONT_VH * 0.55}vh; white-space: normal; line-height: 1.1;
-    "><span class="icon">🔒</span>RECALIBRER ORIENTATION</button>
   `
   stage.appendChild(panel)
 
@@ -116,5 +111,4 @@ export function createControls(stage, handlers) {
   q('passenger').addEventListener('change', (e) => handlers.onPassenger(e.target.checked))
   q('totalKm').addEventListener('change', (e) => handlers.onSetTotalKm(e.target.value))
   q('calib').addEventListener('change', (e) => handlers.onSetCalib(e.target.value))
-  q('recalorientation').addEventListener('click', () => handlers.onRecalibrateOrientation())
 }
