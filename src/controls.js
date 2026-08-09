@@ -12,7 +12,18 @@ const VB_W = 1217.6
 const VB_H = 562.8
 const xw = (px) => (px / VB_W) * 100 // -> vw
 const yh = (px) => (px / VB_H) * 100 // -> vh
-const FONT_VH = yh(47.1)
+// vh is always relative to the *true* device viewport height, regardless of
+// any CSS rotation trick applied to an ancestor — so text sized directly off
+// the mockup's px-per-viewBox-height reads fine on a desktop test window,
+// but on a real phone's landscape viewport (~390px tall) it comes out too
+// small to read at a glance while riding. SCALE bumps text/row sizes past
+// what the mockup's own proportions would give, verified against a
+// realistic 844x390 iPhone landscape viewport (not a generously-sized dev
+// window) — positions/x-spans stay mockup-matched, only size grows.
+const SCALE = 1.5
+const FONT_VH = yh(47.1) * SCALE
+const ROW_H = yh(64.9) * SCALE
+const FIELD_H = yh(93.1) * SCALE
 
 const STYLE = `
   .reglages-panel { font-family: 'din-condensed', system-ui, sans-serif; }
@@ -34,12 +45,15 @@ const STYLE = `
     background: transparent; border: 1.2px solid #fff; border-radius: 4px;
     padding: 0 .6vw; width: 100%; box-sizing: border-box;
   }
-  .reglages-panel .passenger {
-    position: absolute; display: flex; gap: 1vw; align-items: center;
-    font-size: ${FONT_VH * 0.6}vh;
-  }
   .reglages-panel .close-btn {
     border-radius: 50%; font-size: ${FONT_VH}vh; line-height: 1;
+  }
+  .reglages-panel button:disabled {
+    opacity: .35; cursor: not-allowed;
+  }
+  .reglages-panel .color-btn { position: relative; overflow: hidden; }
+  .reglages-panel .color-btn input[type=color] {
+    position: absolute; inset: 0; opacity: 0; border: 0; padding: 0; cursor: pointer;
   }
 `
 const styleTag = document.createElement('style')
@@ -62,53 +76,88 @@ export function createControls(stage, handlers) {
     background: 'rgba(0,0,0,.85)',
   })
 
-  // Coordinates below are the mockup's rect/circle geometry verbatim
-  // (see V_1-REGLAGES-CodeSVG.txt), just run through xw()/yh().
+  // x-positions/widths for Plein/Reserve/Conso/Km stay the mockup's own
+  // (see V_1-REGLAGES-CodeSVG.txt) — only row heights, font sizes, and
+  // vertical spacing depart from it (SCALE, see above). Nouveau trajet and
+  // Passager were dropped: both actions are already reachable directly on
+  // MAIN (tap the KM dial / the passenger circle), so they were pure
+  // duplication here.
+  //
+  // x-spans below no longer track the mockup's own (narrower) widths — once
+  // SCALE grew the font/row-height enough to read at a glance while riding,
+  // the mockup's original button/field widths were too tight and clipped
+  // text (RESERVE's icon+label, the CONSO value). Widened and re-centered
+  // around the same horizontal midpoint the mockup used, using the
+  // generous unused space either side of that center column.
+  const CENTER = 49.5 // vw, same midpoint the mockup's own layout used
+  const ROW_SPAN = 60 // vw, total width of the widened button rows
+  const rowLeft = CENTER - ROW_SPAN / 2
+
+  const btnW = 23.5 // vw, Plein/Reserve
+  const btnGap = ROW_SPAN - 2 * btnW
+
+  const fieldW = 17 // vw, Conso/Km
+  const r3Gap = 2 // vw, between Météo/GPS/Couleur
+  const r3W = (ROW_SPAN - 2 * r3Gap) / 3
+
   panel.innerHTML = `
     <button class="close-btn" data-act="close" aria-label="Fermer" style="
       left:${xw(1052.3)}vw; top:${yh(76)}vh; width:${yh(59)}vh; height:${yh(59)}vh;
     ">✕</button>
 
     <button data-act="plein" style="
-      left:${xw(359.3)}vw; top:${yh(174.5)}vh; width:${xw(192)}vw; height:${yh(64.9)}vh;
+      left:${rowLeft}vw; top:26vh; width:${btnW}vw; height:${ROW_H}vh;
     ">PLEIN</button>
 
     <button data-act="annulreserve" style="
-      left:${xw(654.8)}vw; top:${yh(174.5)}vh; width:${xw(192)}vw; height:${yh(64.9)}vh;
+      left:${rowLeft + btnW + btnGap}vw; top:26vh; width:${btnW}vw; height:${ROW_H}vh;
     "><span class="icon">↺</span>RESERVE</button>
 
-    <div class="field" style="left:${xw(416.4)}vw; top:${yh(283.7)}vh; width:${xw(77.9)}vw; height:${yh(93.1)}vh;">
+    <div class="field" style="left:${rowLeft}vw; top:48vh; width:${fieldW}vw; height:${FIELD_H}vh;">
       <label>CONSO</label>
       <input type="number" step="0.1" data-act="calib" />
     </div>
 
-    <div class="field" style="left:${xw(696.9)}vw; top:${yh(283.7)}vh; width:${xw(113.2)}vw; height:${yh(93.1)}vh;">
+    <div class="field" style="left:${rowLeft + ROW_SPAN - fieldW}vw; top:48vh; width:${fieldW}vw; height:${FIELD_H}vh;">
       <label>KM</label>
       <input type="number" data-act="totalKm" />
     </div>
 
-    <button data-act="newtrip" style="
-      left:${xw(359.3)}vw; top:${yh(410)}vh; width:${xw(487.5)}vw; height:${yh(64.9)}vh;
-    "><span class="icon">🔄</span>NOUVEAU TRAJET</button>
+    <button data-act="meteo" disabled style="
+      left:${rowLeft}vw; top:72vh; width:${r3W}vw; height:${ROW_H}vh; font-size:${FONT_VH * 0.75}vh;
+    ">☁️ MÉTÉO</button>
 
-    <label class="passenger" style="left:${xw(359.3)}vw; top:${yh(490)}vh; width:${xw(487.5)}vw; justify-content:center;">
-      <input type="checkbox" data-act="passenger" /> PASSAGER (2 PERSONNES)
-    </label>
+    <button data-act="gps" disabled style="
+      left:${rowLeft + r3W + r3Gap}vw; top:72vh; width:${r3W}vw; height:${ROW_H}vh; font-size:${FONT_VH * 0.75}vh;
+    ">📍 GPS</button>
+
+    <label class="color-btn" style="
+      left:${rowLeft + 2 * (r3W + r3Gap)}vw; top:72vh; width:${r3W}vw; height:${ROW_H}vh; font-size:${FONT_VH * 0.6}vh;
+      display:flex; align-items:center; justify-content:center; gap:.3em; white-space:nowrap;
+      border:1.5px solid #fff; border-radius:${yh(10.1)}vh; text-transform:uppercase; letter-spacing:.02em; color:#fff;
+    ">🎨 COULEUR<input type="color" data-act="color" /></label>
   `
   stage.appendChild(panel)
 
   const q = (a) => panel.querySelector(`[data-act="${a}"]`)
   gear.addEventListener('click', () => {
-    q('passenger').checked = handlers.getState().passenger
     q('totalKm').value = Math.floor(handlers.getState().totalKm)
     q('calib').value = handlers.getState().calibratedLPer100.toFixed(1)
+    q('color').value = handlers.getState().accentColor
     panel.style.display = 'block'
   })
   q('close').addEventListener('click', () => (panel.style.display = 'none'))
   q('plein').addEventListener('click', () => handlers.onPlein())
   q('annulreserve').addEventListener('click', () => handlers.onAnnulReserve())
-  q('newtrip').addEventListener('click', () => handlers.onNewTrip())
-  q('passenger').addEventListener('change', (e) => handlers.onPassenger(e.target.checked))
   q('totalKm').addEventListener('change', (e) => handlers.onSetTotalKm(e.target.value))
   q('calib').addEventListener('change', (e) => handlers.onSetCalib(e.target.value))
+  // 'input' fires continuously while dragging inside the native picker (live
+  // MAIN preview, not persisted yet); 'change' fires once on commit — persist
+  // then drop straight back to MAIN, per the agreed flow (no return trip
+  // through Réglages).
+  q('color').addEventListener('input', (e) => handlers.onColorPreview(e.target.value))
+  q('color').addEventListener('change', (e) => {
+    handlers.onColorCommit(e.target.value)
+    panel.style.display = 'none'
+  })
 }

@@ -14,6 +14,7 @@ export const DEFAULTS = Object.freeze({
   sessionDistanceKm: 0,
   movingSec: 0,
   stoppedSec: 0,
+  accentColor: '#2e97b7',
 })
 
 export function createStore(storage = globalThis.localStorage) {

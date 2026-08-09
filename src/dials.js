@@ -57,6 +57,12 @@ export function createDials(stage, svg) {
   const [rawSpeedText] = textsOf(vitesseGroup)
   const [dailyText, totalText] = textsOf(kmGroup)
   const [nbPersText] = textsOf(nbPersGroup)
+  // setOdo() writes the "hundreds of meters" (tenths-of-km) digit into
+  // tspans[1] — the colored last digit — for both odometers.
+  const coloredDigits = [dailyText, totalText]
+    .map((t) => t.querySelectorAll('tspan')[1])
+    .filter(Boolean)
+  const colorLayer = svg.querySelector('#Couleur-dynamique')
 
   // Listen on the group (not the shape) so clicks on the overlapping <text> —
   // painted on top, and a sibling rather than a descendant of the shape —
@@ -99,6 +105,10 @@ export function createDials(stage, svg) {
     },
     onPassengerTap(cb) {
       nbPersGroup.addEventListener('click', cb)
+    },
+    setAccentColor(hex) {
+      coloredDigits.forEach((t) => (t.style.fill = hex))
+      if (colorLayer) colorLayer.style.fill = hex
     },
   }
 }

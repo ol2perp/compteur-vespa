@@ -21,6 +21,7 @@ const fuel = createFuel(saved)
 
 let lastSpeed = 0
 let lastT = null
+let accentColor = saved.accentColor ?? '#2e97b7'
 
 async function loadSvg() {
   const res = await fetch('./compteur.svg')
@@ -36,31 +37,36 @@ function persist() {
   const t = trip.snapshot()
   const f = fuel.snapshot()
   store.save({ ...f, totalKm: t.totalKm, dailyKm: t.dailyKm,
-    sessionDistanceKm: t.sessionDistanceKm, movingSec: t.movingSec, stoppedSec: t.stoppedSec })
+    sessionDistanceKm: t.sessionDistanceKm, movingSec: t.movingSec, stoppedSec: t.stoppedSec,
+    accentColor })
 }
 
 loadSvg().then(({ stage, svg }) => {
   initOrientationLock(stage)
   const gauge = createGauge(svg)
   const dials = createDials(stage, svg)
+  dials.setAccentColor(accentColor)
 
   dials.onResetDaily(() => { trip.resetDaily(); trip.resetSession(); persist(); render() })
   dials.onReserveTap(() => { fuel.reserve(trip.snapshot().totalKm); persist(); render() })
   dials.onPassengerTap(() => { fuel.setPassenger(!fuel.snapshot().passenger); persist(); render() })
 
   createControls(stage, {
-    getState: () => ({ ...fuel.snapshot(), totalKm: trip.snapshot().totalKm }),
+    getState: () => ({ ...fuel.snapshot(), totalKm: trip.snapshot().totalKm, accentColor }),
     onPlein: () => { fuel.plein(trip.snapshot().totalKm); persist(); render() },
     onAnnulReserve: () => { fuel.cancelReserve(); persist(); render() },
     onPassenger: (on) => { fuel.setPassenger(on); persist(); render() },
     onNewTrip: () => { trip.resetSession(); persist(); render() },
+    onColorPreview: (hex) => dials.setAccentColor(hex), // live drag preview, not persisted
+    onColorCommit: (hex) => { accentColor = hex; dials.setAccentColor(hex); persist() },
     onSetTotalKm: (raw) => {
       const v = parseSettingsNumber(raw, { min: 0 })
       if (v == null) return
       const f = fuel.snapshot()
       const t = trip.snapshot()
       store.save({ ...f, totalKm: v, dailyKm: t.dailyKm,
-        sessionDistanceKm: t.sessionDistanceKm, movingSec: t.movingSec, stoppedSec: t.stoppedSec })
+        sessionDistanceKm: t.sessionDistanceKm, movingSec: t.movingSec, stoppedSec: t.stoppedSec,
+        accentColor })
       location.reload()
     },
     onSetCalib: (raw) => {
@@ -69,7 +75,8 @@ loadSvg().then(({ stage, svg }) => {
       const f = fuel.snapshot()
       const t = trip.snapshot()
       store.save({ ...f, calibratedLPer100: v, totalKm: t.totalKm, dailyKm: t.dailyKm,
-        sessionDistanceKm: t.sessionDistanceKm, movingSec: t.movingSec, stoppedSec: t.stoppedSec })
+        sessionDistanceKm: t.sessionDistanceKm, movingSec: t.movingSec, stoppedSec: t.stoppedSec,
+        accentColor })
       location.reload()
     },
   })
