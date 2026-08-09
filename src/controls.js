@@ -1,3 +1,5 @@
+import { createColorPicker } from './colorPicker.js'
+
 // Renders a ⚙ button + panel. Calls back into app on actions.
 // Panel layout is retranscribed pixel-for-pixel from
 // docs/DesignGraphik/V_1/V_1-REGLAGES-CodeSVG.txt (mockup only, not loaded
@@ -51,17 +53,6 @@ const STYLE = `
   .reglages-panel button:disabled {
     opacity: .35; cursor: not-allowed;
   }
-  #color-confirm {
-    position: absolute; display: none; gap: 2vw; z-index: 25;
-    font-family: 'din-condensed', system-ui, sans-serif;
-  }
-  #color-confirm button {
-    font: inherit; font-size: ${FONT_VH}vh; color: #fff; text-transform: uppercase;
-    letter-spacing: .02em; background: rgba(0,0,0,.6); border: 1.5px solid #fff;
-    border-radius: ${yh(10.1)}vh; cursor: pointer; display: flex; align-items: center;
-    justify-content: center; white-space: nowrap; gap: .3em;
-  }
-  #color-confirm button:active { background: rgba(255,255,255,.15); }
 `
 const styleTag = document.createElement('style')
 styleTag.textContent = STYLE
@@ -144,39 +135,16 @@ export function createControls(stage, handlers) {
   `
   stage.appendChild(panel)
 
-  // The native picker's own 'change' fires the instant the rider dismisses
-  // it — even a light tap on a swatch closes it and used to commit
-  // immediately, with no chance to try a color first. So 'change' now only
-  // reveals a Valider/Annuler bar instead of persisting: the color is
-  // already live-previewed on MAIN (via 'input'), and only Valider
-  // persists it. The <input> itself lives at the stage level, not inside
-  // the panel, so it stays clickable (a display:none ancestor can't be
-  // triggered) while the panel is hidden during the whole picking flow.
-  const colorInput = document.createElement('input')
-  colorInput.type = 'color'
-  colorInput.dataset.act = 'color'
-  Object.assign(colorInput.style, { position: 'absolute', opacity: '0', width: '0', height: '0', border: '0', padding: '0', pointerEvents: 'none' })
-  stage.appendChild(colorInput)
-
-  const confirmBar = document.createElement('div')
-  confirmBar.id = 'color-confirm'
-  Object.assign(confirmBar.style, { left: `${CENTER - 30}vw`, top: '72vh', width: '60vw', height: `${ROW_H}vh` })
-  confirmBar.innerHTML = `
-    <button data-act="color-retry" style="flex:1" aria-label="Essayer une autre couleur">🎨</button>
-    <button data-act="color-cancel" style="flex:1" aria-label="Annuler">✕</button>
-    <button data-act="color-ok" style="flex:1" aria-label="Valider">✓</button>
-  `
-  stage.appendChild(confirmBar)
-
-  let preEditColor = null
+  const colorPicker = createColorPicker(stage, {
+    onPreview: handlers.onColorPreview,
+    onCommit: handlers.onColorCommit,
+  })
 
   const q = (a) => panel.querySelector(`[data-act="${a}"]`)
-  const c = (a) => confirmBar.querySelector(`[data-act="${a}"]`)
 
   gear.addEventListener('click', () => {
     q('totalKm').value = Math.floor(handlers.getState().totalKm)
     q('calib').value = handlers.getState().calibratedLPer100.toFixed(1)
-    colorInput.value = handlers.getState().accentColor
     panel.style.display = 'block'
   })
   q('close').addEventListener('click', () => (panel.style.display = 'none'))
@@ -186,24 +154,7 @@ export function createControls(stage, handlers) {
   q('calib').addEventListener('change', (e) => handlers.onSetCalib(e.target.value))
 
   q('color-open').addEventListener('click', () => {
-    preEditColor = handlers.getState().accentColor
     panel.style.display = 'none'
-    colorInput.click()
-  })
-  colorInput.addEventListener('input', (e) => handlers.onColorPreview(e.target.value))
-  colorInput.addEventListener('change', () => {
-    confirmBar.style.display = 'flex'
-  })
-  c('color-retry').addEventListener('click', () => {
-    confirmBar.style.display = 'none'
-    colorInput.click()
-  })
-  c('color-cancel').addEventListener('click', () => {
-    handlers.onColorPreview(preEditColor)
-    confirmBar.style.display = 'none'
-  })
-  c('color-ok').addEventListener('click', () => {
-    handlers.onColorCommit(colorInput.value)
-    confirmBar.style.display = 'none'
+    colorPicker.open(handlers.getState().accentColor)
   })
 }
